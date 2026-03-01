@@ -1,0 +1,6 @@
+[submodule "Server"]
+	path = Server
+	url = git@github.com:TTK4145/Simulator-v2.git
+[submodule "Resources"]
+	path = Resources
+	url = git@github.com:TTK4145/Project-resources.git
