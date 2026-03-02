@@ -4,3 +4,6 @@
 [submodule "Resources"]
 	path = Resources
 	url = git@github.com:TTK4145/Project-resources.git
+[submodule "Driver"]
+	path = Driver
+	url = git@github.com:TTK4145/driver-c.git
