@@ -5,6 +5,9 @@ The main controller is written in C and uses a small hardware/IO driver in `Driv
 A simulator server (written in D) lives in the subrepository `Server/` and can be built with DMD.
 The project is built with CMake and produces binaries in `./bin/`.
 
+To start working type this in the terminal:
+```git clone --recurse-submodules git@github.com:Eirik-MS/Sanntid_C.git```
+
 ## Prerequisites
 
 Required to build everything:
