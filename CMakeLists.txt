@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(Elevator C D)
+project(Elevator C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -10,13 +10,13 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 #------------------------------------
 option(BUILD_TESTS "Build driver tests" ON)
 option(BUILD_SERVER "Build the D sim server" ON)
-option(BUILD_HALL_ASSIGNER "Build D hall request assigner and link into C app" ON)
+option(BUILD_HALL_ASSIGNER_LIB "Build D hall request assigner and link into C app" OFF)
 
 #Find dmd for building the D server and hall request assigner
 find_program(D_COMPILER NAMES ldc2 dmd)
 if (NOT D_COMPILER)
   message(FATAL_ERROR
-    "BUILD_HALL_ASSIGNER is ON, but 'dmd' was not found in PATH.\n"
+    "BUILD_HALL_ASSIGNER_LIB is ON, but 'dmd' was not found in PATH.\n"
     "Install DMD: http://dlang.org/download.html#dmd\n")
 endif()
 
@@ -96,7 +96,7 @@ endif()
 #-------------------------------------
 # --- D assigner build and linking ---
 #-------------------------------------
-if (BUILD_HALL_ASSIGNER)
+if (BUILD_HALL_ASSIGNER_LIB)
 
   set(HRA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Resources/cost_fns/hall_request_assigner/")
   set(BRIDGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Src/lib")
@@ -116,9 +116,6 @@ if (BUILD_HALL_ASSIGNER)
     "${BRIDGE_DIR}/assigner_bridge.d"
   )
 
-  #/Resources/cost_fns/hall_request_assigner/config.d
-  # Resources/cost_fns/hall_request_assigner/config.d
-  # Build a static library in one go (no wildcard *.o needed)
   add_custom_command(
     OUTPUT "${HRA_LIB}"
     COMMAND "${D_COMPILER}" -lib -c -w -g
@@ -139,14 +136,41 @@ if (BUILD_HALL_ASSIGNER)
 
   target_link_libraries(elevator_app PRIVATE "${HRA_LIB}")
 
-  set_target_properties(elevator_app PROPERTIES
-    LINKER_LANGUAGE D
-    LINK_EXECUTABLE
-      "${D_COMPILER} <LINK_FLAGS> <OBJECTS> -of<TARGET> <LINK_LIBRARIES>"
+  find_package(Threads REQUIRED)
+
+  # Prefer LDC-specific shared libs (debug vs release). Names vary by distro, so try several.
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    find_library(DRUNTIME_LIB
+      NAMES druntime-ldc-debug-shared druntime-ldc
+      PATHS /lib64 /usr/lib64 /lib /usr/lib
+      REQUIRED
+    )
+    find_library(PHOBOS_LIB
+      NAMES phobos2-ldc-debug-shared phobos2-ldc phobos2
+      PATHS /lib64 /usr/lib64 /lib /usr/lib
+      REQUIRED
+    )
+  else()
+    find_library(DRUNTIME_LIB
+      NAMES druntime-ldc-shared druntime-ldc
+      PATHS /lib64 /usr/lib64 /lib /usr/lib
+      REQUIRED
+    )
+    find_library(PHOBOS_LIB
+      NAMES phobos2-ldc-shared phobos2-ldc phobos2
+      PATHS /lib64 /usr/lib64 /lib /usr/lib
+      REQUIRED
+    )
+  endif()
+
+  message(STATUS "Using druntime: ${DRUNTIME_LIB}")
+  message(STATUS "Using phobos:   ${PHOBOS_LIB}")
+
+  target_link_libraries(elevator_app PRIVATE
+    "${PHOBOS_LIB}"
+    "${DRUNTIME_LIB}"
+    Threads::Threads
+    m
+    dl
   )
-
-  #target_include_directories(elevator_app PRIVATE "${BRIDGE_DIR}")
-
-  # Link D runtime + phobos (needed when you link D code into a C executable)
-  #target_link_libraries(elevator_app PRIVATE phobos2 druntime pthread m rt dl)
 endif()
